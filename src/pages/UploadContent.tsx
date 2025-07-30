@@ -4,7 +4,7 @@ import { MainLayout } from "@/components/layout/main-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
+import { Input } from "@/components/ui/input"; // Although not directly used for file input, it's a common UI component
 import { FileUp, Clipboard } from "lucide-react";
 import { showSuccess, showError } from "@/utils/toast";
 

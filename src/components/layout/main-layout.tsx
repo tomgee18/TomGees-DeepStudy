@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"; // Added TooltipProvider
 import { Home, FileText, Brain, Zap, MessageSquare, Clock, Settings, BookOpen, Lightbulb, HelpCircle } from "lucide-react";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Separator } from "@/components/ui/separator";
@@ -46,8 +46,8 @@ export function MainLayout({ children }: MainLayoutProps) {
         </div>
         <Separator />
         <ScrollArea className="flex-1 py-4">
-          <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-            <TooltipProvider>
+          <TooltipProvider> {/* This TooltipProvider is now correctly imported */}
+            <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
               <Tooltip delayDuration={0}>
                 <TooltipTrigger asChild>
                   <Link
@@ -211,8 +211,8 @@ export function MainLayout({ children }: MainLayoutProps) {
                 </TooltipTrigger>
                 {isCollapsed && <TooltipContent side="right">Help</TooltipContent>}
               </Tooltip>
-            </TooltipProvider>
-          </nav>
+            </nav>
+          </TooltipProvider>
         </ScrollArea>
         <div className="p-4 flex justify-center">
           <ModeToggle />
