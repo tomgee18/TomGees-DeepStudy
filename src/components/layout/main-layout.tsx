@@ -4,8 +4,7 @@ import * as React from "react";
 import { Link } from "react-router-dom";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"; // Added TooltipProvider
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { Home, FileText, Brain, Zap, MessageSquare, Clock, Settings, BookOpen, Lightbulb, HelpCircle } from "lucide-react";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Separator } from "@/components/ui/separator";
@@ -46,7 +45,7 @@ export function MainLayout({ children }: MainLayoutProps) {
         </div>
         <Separator />
         <ScrollArea className="flex-1 py-4">
-          <TooltipProvider> {/* This TooltipProvider is now correctly imported */}
+          <TooltipProvider>
             <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
               <Tooltip delayDuration={0}>
                 <TooltipTrigger asChild>

@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
+serve(async (req: Request) => { // Explicitly type 'req' as Request
   // Handle CORS preflight request
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -31,8 +31,8 @@ serve(async (req) => {
       });
     }
 
-    // Call the Gemini API
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`, {
+    // Call the Gemini API with gemini-1.5-flash
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -68,9 +68,13 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
-  } catch (error) {
-    console.error("Error in summarize edge function:", error.message);
-    return new Response(JSON.stringify({ error: error.message }), {
+  } catch (error: unknown) { // Explicitly type 'error' as unknown
+    let errorMessage = "An unknown error occurred.";
+    if (error instanceof Error) { // Type guard to narrow 'error' to Error
+      errorMessage = error.message;
+    }
+    console.error("Error in summarize edge function:", errorMessage);
+    return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     });
