@@ -25,20 +25,47 @@ serve(async (req) => {
     // Initialize Supabase client (if needed for other operations, though not strictly for AI API calls)
     // const supabase = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_ANON_KEY') ?? '');
 
-    // --- Placeholder for AI API call ---
-    // In a real application, you would call Gemini or OpenRouter API here.
-    // Example with a hypothetical AI API:
-    // const response = await fetch('https://api.ai-model.com/summarize', {
-    //   method: 'POST',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //     'Authorization': `Bearer ${Deno.env.get('GEMINI_API_KEY') || Deno.env.get('OPENROUTER_API_KEY')}`, // Use environment variables for API keys
-    //   },
-    //   body: JSON.stringify({ text: text, length: 'short' }),
-    // });
-    // const aiData = await response.json();
-    // const summary = aiData.summary;
-    // --- End Placeholder ---
+    // --- Start of actual AI API call ---
+    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
+    if (!geminiApiKey) {
+      return new Response(JSON.stringify({ error: 'GEMINI_API_KEY not set.' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500,
+      });
+    }
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {"text": `Please provide a concise summary of the following text:\n\n${text}`}
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 200 // Adjust based on desired summary length
+        }
+      }),
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        console.error("AI API Error:", errorData);
+        return new Response(JSON.stringify({ error: `AI service error: ${errorData.error?.message || 'Unknown error'}` }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: response.status,
+        });
+    }
+
+    const aiData = await response.json();
+    const summary = aiData.candidates[0]?.content?.parts[0]?.text || "Could not generate summary.";
+    // --- End of actual AI API call ---
 
     // For now, we'll return a simple mock summary
     const summary = `This is a summary of your text: "${text.substring(0, Math.min(text.length, 100))}..."`;
