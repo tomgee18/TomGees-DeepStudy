@@ -5,7 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import UploadContent from "./pages/UploadContent"; // Import the new UploadContent page
+import UploadContent from "./pages/UploadContent";
+import Summarize from "./pages/Summarize"; // Import the new Summarize page
 import { ThemeProvider } from "./components/theme-provider";
 
 const queryClient = new QueryClient();
@@ -19,7 +20,8 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/upload" element={<UploadContent />} /> {/* Add the new route */}
+            <Route path="/upload" element={<UploadContent />} />
+            <Route path="/summarize" element={<Summarize />} /> {/* Add the new route */}
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
