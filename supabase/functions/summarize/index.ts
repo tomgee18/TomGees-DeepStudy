@@ -22,18 +22,16 @@ serve(async (req) => {
       });
     }
 
-    // Initialize Supabase client (if needed for other operations, though not strictly for AI API calls)
-    // const supabase = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_ANON_KEY') ?? '');
-
-    // --- Start of actual AI API call ---
+    // Retrieve Gemini API Key from environment variables
     const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
     if (!geminiApiKey) {
-      return new Response(JSON.stringify({ error: 'GEMINI_API_KEY not set.' }), {
+      return new Response(JSON.stringify({ error: 'GEMINI_API_KEY not set in Supabase secrets.' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
       });
     }
 
+    // Call the Gemini API
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
@@ -48,7 +46,7 @@ serve(async (req) => {
           }
         ],
         generationConfig: {
-          temperature: 0.7,
+          temperature: 0.7, // Adjust for creativity vs. factualness
           maxOutputTokens: 200 // Adjust based on desired summary length
         }
       }),
@@ -56,7 +54,7 @@ serve(async (req) => {
 
     if (!response.ok) {
         const errorData = await response.json();
-        console.error("AI API Error:", errorData);
+        console.error("Gemini API Error:", errorData);
         return new Response(JSON.stringify({ error: `AI service error: ${errorData.error?.message || 'Unknown error'}` }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: response.status,
@@ -65,10 +63,6 @@ serve(async (req) => {
 
     const aiData = await response.json();
     const summary = aiData.candidates[0]?.content?.parts[0]?.text || "Could not generate summary.";
-    // --- End of actual AI API call ---
-
-    // For now, we'll return a simple mock summary
-    const summary = `This is a summary of your text: "${text.substring(0, Math.min(text.length, 100))}..."`;
 
     return new Response(JSON.stringify({ summary }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
