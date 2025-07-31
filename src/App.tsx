@@ -7,7 +7,8 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import UploadContent from "./pages/UploadContent";
 import Summarize from "./pages/Summarize";
-import Flashcards from "./pages/Flashcards"; // Import the new Flashcards page
+import Flashcards from "./pages/Flashcards";
+import MindMap from "./pages/MindMap"; // Import the new MindMap page
 import { ThemeProvider } from "./components/theme-provider";
 
 const queryClient = new QueryClient();
@@ -23,7 +24,8 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/upload" element={<UploadContent />} />
             <Route path="/summarize" element={<Summarize />} />
-            <Route path="/flashcards" element={<Flashcards />} /> {/* Add the new route */}
+            <Route path="/flashcards" element={<Flashcards />} />
+            <Route path="/mindmap" element={<MindMap />} /> {/* Add the new route */}
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
