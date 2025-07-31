@@ -16,7 +16,15 @@ import Settings from "./pages/Settings"; // Import the new Settings page
 import Help from "./pages/Help"; // Import the new Help page
 import { ThemeProvider } from "./components/theme-provider";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
