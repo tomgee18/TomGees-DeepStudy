@@ -4,12 +4,18 @@ import { MainLayout } from "@/components/layout/main-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { FileUp, Clipboard } from "lucide-react";
-import { showSuccess, showError } from "@/utils/toast";
+import { FileUp, Clipboard, Loader2 } from "lucide-react";
+import { showSuccess, showError, showLoading, dismissToast } from "@/utils/toast";
+import { supabase } from "@/integrations/supabase/client";
 
-const UploadContent = () => {
+interface UploadContentProps {
+  onProcessComplete?: (chunks: string[]) => void;
+}
+
+const UploadContent = ({ onProcessComplete }: UploadContentProps) => {
   const [pastedText, setPastedText] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     setUploadedFiles(prevFiles => [...prevFiles, ...acceptedFiles]);
@@ -26,18 +32,55 @@ const UploadContent = () => {
     multiple: true,
   });
 
-  const handleProcessContent = () => {
+  const handleProcessContent = async () => {
     if (uploadedFiles.length === 0 && pastedText.trim() === "") {
       showError("Please upload files or paste text to process.");
       return;
     }
-    // Here you would typically send the files/text to your backend/Supabase Edge Function
-    console.log("Processing files:", uploadedFiles);
-    console.log("Processing pasted text:", pastedText);
-    showSuccess("Content submitted for processing!");
-    // Reset state after processing
-    setUploadedFiles([]);
-    setPastedText("");
+
+    setIsProcessing(true);
+    const loadingToastId = showLoading("Processing your content...");
+
+    try {
+      // Prepare files data for the edge function
+      const filesData = uploadedFiles.map(file => ({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        lastModified: file.lastModified,
+      }));
+
+      // Call the Supabase Edge Function for document processing
+      const { data, error } = await supabase.functions.invoke('process-document', {
+        body: { 
+          files: filesData, 
+          text: pastedText 
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      showSuccess(`Content processed successfully! Created ${data.chunks_count} chunks.`);
+      dismissToast(loadingToastId);
+
+      // Call the callback if provided
+      if (onProcessComplete && data.chunks) {
+        onProcessComplete(data.chunks);
+      }
+
+      // Reset state after processing
+      setUploadedFiles([]);
+      setPastedText("");
+      
+    } catch (error) {
+      console.error("Error processing content:", error);
+      showError("Failed to process content. Please try again.");
+      dismissToast(loadingToastId);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -77,7 +120,7 @@ const UploadContent = () => {
                   <h3 className="text-md font-semibold mb-2">Files to upload:</h3>
                   <ul className="list-disc list-inside text-sm text-muted-foreground">
                     {uploadedFiles.map((file, index) => (
-                      <li key={index}>{file.name}</li>
+                      <li key={index}>{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</li>
                     ))}
                   </ul>
                 </div>
@@ -104,8 +147,19 @@ const UploadContent = () => {
         </div>
 
         <div className="mt-8 text-center">
-          <Button size="lg" onClick={handleProcessContent}>
-            Process Content
+          <Button 
+            size="lg" 
+            onClick={handleProcessContent} 
+            disabled={isProcessing || (uploadedFiles.length === 0 && pastedText.trim() === "")}
+          >
+            {isProcessing ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              "Process Content"
+            )}
           </Button>
         </div>
       </div>
