@@ -10,7 +10,8 @@ import Summarize from "./pages/Summarize";
 import Flashcards from "./pages/Flashcards";
 import MindMap from "./pages/MindMap";
 import Chat from "./pages/Chat";
-import Pomodoro from "./pages/Pomodoro"; // Import the new Pomodoro page
+import Pomodoro from "./pages/Pomodoro";
+import Quizzes from "./pages/Quizzes"; // Import the new Quizzes page
 import { ThemeProvider } from "./components/theme-provider";
 
 const queryClient = new QueryClient();
@@ -29,7 +30,8 @@ const App = () => (
             <Route path="/flashcards" element={<Flashcards />} />
             <Route path="/mindmap" element={<MindMap />} />
             <Route path="/chat" element={<Chat />} />
-            <Route path="/pomodoro" element={<Pomodoro />} /> {/* Add the new route */}
+            <Route path="/pomodoro" element={<Pomodoro />} />
+            <Route path="/quizzes" element={<Quizzes />} /> {/* Add the new route */}
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
