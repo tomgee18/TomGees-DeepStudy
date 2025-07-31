@@ -6,11 +6,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { BookOpen } from "lucide-react";
 import { showSuccess, showError, showLoading, dismissToast } from "@/utils/toast";
 import { supabase } from "@/integrations/supabase/client";
+import { ModelPicker } from "@/components/model-picker";
 
 const Summarize = () => {
   const [inputText, setInputText] = useState("");
   const [summary, setSummary] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedModel, setSelectedModel] = useState("gemini-1.5-flash");
 
   const handleSummarize = async () => {
     if (inputText.trim() === "") {
@@ -24,7 +26,7 @@ const Summarize = () => {
     try {
       // Call the Supabase Edge Function for summarization
       const { data, error } = await supabase.functions.invoke('summarize', {
-        body: { text: inputText },
+        body: { text: inputText, model: selectedModel },
       });
 
       if (error) {
@@ -65,9 +67,16 @@ const Summarize = () => {
               className="w-full mb-4"
               disabled={isLoading}
             />
-            <Button onClick={handleSummarize} disabled={isLoading}>
-              {isLoading ? "Summarizing..." : "Generate Summary"}
-            </Button>
+            <div className="flex gap-4 items-end">
+              <ModelPicker
+                selectedModel={selectedModel}
+                onModelChange={setSelectedModel}
+                className="flex-1"
+              />
+              <Button onClick={handleSummarize} disabled={isLoading}>
+                {isLoading ? "Summarizing..." : "Generate Summary"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 

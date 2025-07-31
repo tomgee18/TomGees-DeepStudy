@@ -4,9 +4,10 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageSquare, Send } from "lucide-react";
+import { MessageSquare, Send, Settings } from "lucide-react";
 import { showSuccess, showError, showLoading, dismissToast } from "@/utils/toast";
 import { supabase } from "@/integrations/supabase/client";
+import { ModelPicker } from "@/components/model-picker";
 
 interface Message {
   id: string;
@@ -18,6 +19,8 @@ const Chat = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedModel, setSelectedModel] = useState("gemini-1.5-flash");
+  const [showSettings, setShowSettings] = useState(false);
 
   const handleSendMessage = async () => {
     if (inputMessage.trim() === "") {
@@ -40,7 +43,7 @@ const Chat = () => {
       // (e.g., processed document ID) to a Supabase Edge Function.
       // For now, we'll simulate an AI response.
       const { data, error } = await supabase.functions.invoke('chat-response', {
-        body: { message: inputMessage },
+        body: { message: inputMessage, model: selectedModel },
       });
 
       if (error) {
@@ -80,9 +83,26 @@ const Chat = () => {
 
         <Card className="flex-1 flex flex-col">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MessageSquare className="h-6 w-6 text-orange-500" /> AI Study Assistant
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-6 w-6 text-orange-500" /> AI Study Assistant
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSettings(!showSettings)}
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
             </CardTitle>
+            {showSettings && (
+              <div className="pt-4">
+                <ModelPicker
+                  selectedModel={selectedModel}
+                  onModelChange={setSelectedModel}
+                />
+              </div>
+            )}
           </CardHeader>
           <CardContent className="flex-1 overflow-hidden p-4">
             <ScrollArea className="h-full pr-4">

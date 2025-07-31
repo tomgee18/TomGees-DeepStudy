@@ -13,7 +13,7 @@ serve(async (req: Request) => { // Explicitly type 'req' as Request
   }
 
   try {
-    const { text } = await req.json();
+    const { text, model = 'gemini-1.5-flash' } = await req.json();
 
     if (!text) {
       return new Response(JSON.stringify({ error: 'Text is required for summarization.' }), {
@@ -31,8 +31,8 @@ serve(async (req: Request) => { // Explicitly type 'req' as Request
       });
     }
 
-    // Call the Gemini API with gemini-1.5-flash
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
+    // Call the Gemini API with selected model
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -14,7 +14,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { message } = await req.json();
+    const { message, model = 'gemini-1.5-flash' } = await req.json();
 
     if (!message) {
       return new Response(JSON.stringify({ error: 'Message is required.' }), {
@@ -32,8 +32,8 @@ serve(async (req: Request) => {
       });
     }
 
-    // Call the Gemini API with gemini-1.5-flash
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
+    // Call the Gemini API with selected model
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
