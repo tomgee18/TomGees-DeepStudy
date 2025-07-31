@@ -12,8 +12,10 @@ A modern, AI-powered study assistant built with React, TypeScript, and Supabase.
 - **Contextual Chat**: Chat with AI about your study materials
 
 ### 🎯 Core Functionality
-- **Content Upload**: Support for text input and file uploads
-- **Model Selection**: Choose from multiple AI models (Gemini 1.5 Flash, Pro, 1.0 Pro)
+- **Multi-Provider AI**: Support for both Gemini and OpenRouter APIs
+- **Advanced File Processing**: Upload PDF, DOCX, TXT, MD, RTF files (up to 10MB each)
+- **Optimized Chunking**: Smart text chunking with overlap for better context preservation
+- **Model Selection**: Choose from 7+ AI models across providers
 - **Dark/Light Theme**: Seamless theme switching
 - **Responsive Design**: Works on desktop and mobile devices
 - **Real-time Processing**: Fast AI-powered content generation
@@ -71,6 +73,7 @@ A modern, AI-powered study assistant built with React, TypeScript, and Supabase.
 5. **Set Supabase Secrets**
    ```bash
    supabase secrets set GEMINI_API_KEY=your-gemini-api-key
+   supabase secrets set OPENROUTER_API_KEY=your-openrouter-api-key
    ```
 
 6. **Start Development Server**
@@ -122,11 +125,35 @@ supabase/
 
 ## 🤖 AI Models
 
-The application supports multiple Gemini AI models:
+The application supports multiple AI providers and models:
 
+### Gemini Models (Google AI)
 - **Gemini 1.5 Flash** - Fast and efficient for most tasks
 - **Gemini 1.5 Pro** - More capable for complex reasoning
 - **Gemini 1.0 Pro** - Reliable baseline model
+
+### OpenRouter Models (Free Tier)
+- **Phi-3 Mini** - Microsoft's efficient small model
+- **Phi-3 Medium** - Microsoft's balanced model
+- **Gemma 7B** - Google's open model
+- **Llama 3 8B** - Meta's open-source model
+- **Zephyr 7B** - HuggingFace's fine-tuned model
+- **OpenChat 7B** - Open-source conversational model
+
+## 🤖 AI Models
+
+The application supports multiple AI providers and models:
+
+### Gemini Models (Google AI)
+- **Gemini 1.5 Flash** - Fast and efficient for most tasks
+- **Gemini 1.5 Pro** - More capable for complex reasoning  
+- **Gemini 1.0 Pro** - Reliable baseline model
+
+### OpenRouter Models
+- **Claude 3.5 Sonnet** - Anthropic's most capable model
+- **GPT-4o** - OpenAI's latest multimodal model
+- **GPT-4o Mini** - Fast and cost-effective GPT-4 class model
+- **Llama 3.1 70B** - Meta's powerful open-source model
 
 ## 📚 API Documentation
 
@@ -258,6 +285,8 @@ Provides contextual AI chat responses.
 | `VITE_SUPABASE_URL` | Supabase project URL | Yes |
 | `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key | Yes |
 | `GEMINI_API_KEY` | Google AI API key (Supabase secret) | Yes |
+| `OPENROUTER_API_KEY` | OpenRouter API key (Supabase secret) | Yes |
+| `OPENROUTER_API_KEY` | OpenRouter API key (Supabase secret) | Yes |
 
 ## 🚀 Deployment
 

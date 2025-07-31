@@ -4,7 +4,7 @@ import { MainLayout } from "@/components/layout/main-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { FileUp, Clipboard, Loader2 } from "lucide-react";
+import { FileUp, Clipboard, Loader2, X } from "lucide-react";
 import { showSuccess, showError, showLoading, dismissToast } from "@/utils/toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -22,14 +22,31 @@ const UploadContent = ({ onProcessComplete }: UploadContentProps) => {
     showSuccess(`${acceptedFiles.length} file(s) added for upload.`);
   }, []);
 
+  const removeFile = (indexToRemove: number) => {
+    setUploadedFiles(prevFiles => prevFiles.filter((_, index) => index !== indexToRemove));
+    showSuccess("File removed.");
+  };
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
       'application/pdf': ['.pdf'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
       'text/plain': ['.txt'],
+      'text/markdown': ['.md'],
+      'application/rtf': ['.rtf'],
     },
     multiple: true,
+    maxSize: 10 * 1024 * 1024, // 10MB limit per file
+    onDropRejected: (rejectedFiles) => {
+      rejectedFiles.forEach(rejection => {
+        if (rejection.errors.some(e => e.code === 'file-too-large')) {
+          showError(`File ${rejection.file.name} is too large. Maximum size is 10MB.`);
+        } else if (rejection.errors.some(e => e.code === 'file-invalid-type')) {
+          showError(`File ${rejection.file.name} has an unsupported format.`);
+        }
+      });
+    },
   });
 
   const handleProcessContent = async () => {
@@ -42,27 +59,36 @@ const UploadContent = ({ onProcessComplete }: UploadContentProps) => {
     const loadingToastId = showLoading("Processing your content...");
 
     try {
-      // Prepare files data for the edge function
-      const filesData = uploadedFiles.map(file => ({
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        lastModified: file.lastModified,
-      }));
-
-      // Call the Supabase Edge Function for document processing
-      const { data, error } = await supabase.functions.invoke('process-document', {
-        body: { 
-          files: filesData, 
-          text: pastedText 
-        },
+      // Create FormData for file uploads
+      const formData = new FormData();
+      
+      // Add text content
+      if (pastedText.trim()) {
+        formData.append('text', pastedText);
+      }
+      
+      // Add files
+      uploadedFiles.forEach((file, index) => {
+        formData.append(`file_${index}`, file);
       });
 
-      if (error) {
-        throw error;
+      // Call the Supabase Edge Function with FormData
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-document`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to process content');
       }
 
-      showSuccess(`Content processed successfully! Created ${data.chunks_count} chunks.`);
+      const data = await response.json();
+
+      showSuccess(`Content processed successfully! Created ${data.chunks_count} chunks from ${Math.round(data.total_size / 1024)}KB of content.`);
       dismissToast(loadingToastId);
 
       // Call the callback if provided
@@ -76,7 +102,7 @@ const UploadContent = ({ onProcessComplete }: UploadContentProps) => {
       
     } catch (error) {
       console.error("Error processing content:", error);
-      showError("Failed to process content. Please try again.");
+      showError(error instanceof Error ? error.message : "Failed to process content. Please try again.");
       dismissToast(loadingToastId);
     } finally {
       setIsProcessing(false);
@@ -112,17 +138,29 @@ const UploadContent = ({ onProcessComplete }: UploadContentProps) => {
                   </p>
                 )}
                 <p className="text-sm text-muted-foreground mt-2">
-                  Supported formats: PDF, DOCX, TXT
+                  Supported formats: PDF, DOCX, TXT, MD, RTF (Max 10MB per file)
                 </p>
               </div>
               {uploadedFiles.length > 0 && (
                 <div className="mt-4">
                   <h3 className="text-md font-semibold mb-2">Files to upload:</h3>
-                  <ul className="list-disc list-inside text-sm text-muted-foreground">
+                  <div className="space-y-2">
                     {uploadedFiles.map((file, index) => (
-                      <li key={index}>{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</li>
+                      <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-md">
+                        <span className="text-sm">
+                          {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeFile(index)}
+                          className="h-6 w-6 p-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               )}
             </CardContent>

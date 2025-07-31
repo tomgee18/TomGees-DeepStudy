@@ -1,7 +1,5 @@
-/// <reference lib="deno.ns" />
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-// createClient is not used in this edge function, so it's removed.
-// import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { AIService } from '../_shared/ai-service.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -23,49 +21,20 @@ serve(async (req: Request) => {
       });
     }
 
-    // Retrieve Gemini API Key from environment variables
-    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
-    if (!geminiApiKey) {
-      return new Response(JSON.stringify({ error: 'GEMINI_API_KEY not set in Supabase secrets.' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      });
-    }
-
-    // Call the Gemini API with selected model
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {"text": `You are an AI study assistant. Respond to the following message: "${message}"`}
-            ]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 150
-        }
-      }),
+    const aiService = new AIService();
+    const prompt = `You are an AI study assistant. Respond to the following message: "${message}"`;
+    
+    const response = await aiService.generateResponse({
+      model,
+      prompt,
+      maxTokens: 300,
+      temperature: 0.7,
     });
 
-    if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Gemini API Error:", errorData);
-        return new Response(JSON.stringify({ error: `AI service error: ${errorData.error?.message || 'Unknown error'}` }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: response.status,
-        });
-    }
-
-    const aiData = await response.json();
-    const aiResponseText = aiData.candidates[0]?.content?.parts[0]?.text || "I'm sorry, I couldn't generate a response.";
-
-    return new Response(JSON.stringify({ response: aiResponseText }), {
+    return new Response(JSON.stringify({ 
+      response: response.text,
+      usage: response.usage 
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });

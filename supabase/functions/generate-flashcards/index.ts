@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { AIService } from '../_shared/ai-service.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,59 +21,30 @@ serve(async (req: Request) => {
       });
     }
 
-    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
-    if (!geminiApiKey) {
-      return new Response(JSON.stringify({ error: 'GEMINI_API_KEY not set in Supabase secrets.' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      });
-    }
-
+    const aiService = new AIService();
     const prompt = `Create ${count} flashcards from the following text. Return ONLY a valid JSON array with objects containing "question" and "answer" fields. No additional text or formatting.
 
 Text: ${text}
 
 Format: [{"question": "...", "answer": "..."}, ...]`;
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {"text": prompt}
-            ]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 1000
-        }
-      }),
+    const response = await aiService.generateResponse({
+      model,
+      prompt,
+      maxTokens: 1500,
+      temperature: 0.7,
     });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("Gemini API Error:", errorData);
-      return new Response(JSON.stringify({ error: `AI service error: ${errorData.error?.message || 'Unknown error'}` }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: response.status,
-      });
-    }
-
-    const aiData = await response.json();
-    const rawResponse = aiData.candidates[0]?.content?.parts[0]?.text || "[]";
     
     try {
       // Clean the response to extract JSON
-      const jsonMatch = rawResponse.match(/\[[\s\S]*\]/);
-      const jsonString = jsonMatch ? jsonMatch[0] : rawResponse;
+      const jsonMatch = response.text.match(/\[[\s\S]*\]/);
+      const jsonString = jsonMatch ? jsonMatch[0] : response.text;
       const flashcards = JSON.parse(jsonString);
       
-      return new Response(JSON.stringify({ flashcards }), {
+      return new Response(JSON.stringify({ 
+        flashcards,
+        usage: response.usage 
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       });
