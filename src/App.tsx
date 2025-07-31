@@ -11,7 +11,9 @@ import Flashcards from "./pages/Flashcards";
 import MindMap from "./pages/MindMap";
 import Chat from "./pages/Chat";
 import Pomodoro from "./pages/Pomodoro";
-import Quizzes from "./pages/Quizzes"; // Import the new Quizzes page
+import Quizzes from "./pages/Quizzes";
+import Settings from "./pages/Settings"; // Import the new Settings page
+import Help from "./pages/Help"; // Import the new Help page
 import { ThemeProvider } from "./components/theme-provider";
 
 const queryClient = new QueryClient();
@@ -31,7 +33,9 @@ const App = () => (
             <Route path="/mindmap" element={<MindMap />} />
             <Route path="/chat" element={<Chat />} />
             <Route path="/pomodoro" element={<Pomodoro />} />
-            <Route path="/quizzes" element={<Quizzes />} /> {/* Add the new route */}
+            <Route path="/quizzes" element={<Quizzes />} />
+            <Route path="/settings" element={<Settings />} /> {/* Add the new route */}
+            <Route path="/help" element={<Help />} /> {/* Add the new route */}
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
