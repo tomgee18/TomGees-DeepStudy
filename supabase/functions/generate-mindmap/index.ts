@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { AIService } from '../_shared/ai-service.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,58 +21,29 @@ serve(async (req: Request) => {
       });
     }
 
-    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
-    if (!geminiApiKey) {
-      return new Response(JSON.stringify({ error: 'GEMINI_API_KEY not set in Supabase secrets.' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      });
-    }
-
+    const aiService = new AIService();
     const prompt = `Create a hierarchical mind map structure from the following text. Return ONLY a valid JSON object with a central topic and branches. Each node should have "id", "label", "children" (array), and "level" (0 for root, 1 for main branches, etc.).
 
 Text: ${text}
 
 Format: {"id": "root", "label": "Main Topic", "level": 0, "children": [{"id": "branch1", "label": "Subtopic 1", "level": 1, "children": [...]}]}`;
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {"text": prompt}
-            ]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 1500
-        }
-      }),
+    const response = await aiService.generateResponse({
+      model,
+      prompt,
+      maxTokens: 2000,
+      temperature: 0.7,
     });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("Gemini API Error:", errorData);
-      return new Response(JSON.stringify({ error: `AI service error: ${errorData.error?.message || 'Unknown error'}` }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: response.status,
-      });
-    }
-
-    const aiData = await response.json();
-    const rawResponse = aiData.candidates[0]?.content?.parts[0]?.text || "{}";
     
     try {
-      const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
-      const jsonString = jsonMatch ? jsonMatch[0] : rawResponse;
+      const jsonMatch = response.text.match(/\{[\s\S]*\}/);
+      const jsonString = jsonMatch ? jsonMatch[0] : response.text;
       const mindMap = JSON.parse(jsonString);
       
-      return new Response(JSON.stringify({ mindMap }), {
+      return new Response(JSON.stringify({ 
+        mindMap,
+        usage: response.usage 
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       });

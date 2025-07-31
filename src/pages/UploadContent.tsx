@@ -1,12 +1,13 @@
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
+import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { FileUp, Clipboard, Loader2, X } from "lucide-react";
+import { FileUp, Clipboard, Loader2, X, CheckCircle } from "lucide-react";
 import { showSuccess, showError, showLoading, dismissToast } from "@/utils/toast";
-import { supabase } from "@/integrations/supabase/client";
+import { useDocument } from "@/contexts/DocumentContext";
 
 interface UploadContentProps {
   onProcessComplete?: (chunks: string[]) => void;
@@ -16,6 +17,8 @@ const UploadContent = ({ onProcessComplete }: UploadContentProps) => {
   const [pastedText, setPastedText] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const { setCurrentDocument, currentDocument, clearDocument } = useDocument();
+  const navigate = useNavigate();
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     setUploadedFiles(prevFiles => [...prevFiles, ...acceptedFiles]);
@@ -87,6 +90,23 @@ const UploadContent = ({ onProcessComplete }: UploadContentProps) => {
       }
 
       const data = await response.json();
+
+      // Store document in context
+      const processedDoc = {
+        id: data.document_id,
+        chunks: data.chunks.map((content: string, index: number) => ({
+          id: `${data.document_id}-${index}`,
+          content,
+          chunk_index: index,
+          total_chunks: data.chunks_count,
+        })),
+        totalSize: data.total_size,
+        fileName: uploadedFiles.length > 0 ? uploadedFiles[0].name : 'Pasted Content',
+        processedAt: new Date(),
+        chunksCount: data.chunks_count,
+      };
+
+      setCurrentDocument(processedDoc);
 
       showSuccess(`Content processed successfully! Created ${data.chunks_count} chunks from ${Math.round(data.total_size / 1024)}KB of content.`);
       dismissToast(loadingToastId);
@@ -184,6 +204,42 @@ const UploadContent = ({ onProcessComplete }: UploadContentProps) => {
           </Card>
         </div>
 
+        {currentDocument && (
+          <Card className="mt-8 border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-green-700 dark:text-green-300">
+                <CheckCircle className="h-5 w-5" />
+                Document Processed Successfully
+              </CardTitle>
+              <CardDescription className="text-green-600 dark:text-green-400">
+                {currentDocument.fileName} • {currentDocument.chunksCount} chunks • Processed {currentDocument.processedAt.toLocaleTimeString()}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2 flex-wrap">
+                <Button onClick={() => navigate('/summarize')} variant="outline" size="sm">
+                  Generate Summary
+                </Button>
+                <Button onClick={() => navigate('/flashcards')} variant="outline" size="sm">
+                  Create Flashcards
+                </Button>
+                <Button onClick={() => navigate('/quizzes')} variant="outline" size="sm">
+                  Generate Quiz
+                </Button>
+                <Button onClick={() => navigate('/mindmap')} variant="outline" size="sm">
+                  Create Mind Map
+                </Button>
+                <Button onClick={() => navigate('/chat')} variant="outline" size="sm">
+                  Chat About Content
+                </Button>
+                <Button onClick={clearDocument} variant="destructive" size="sm">
+                  Clear Document
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="mt-8 text-center">
           <Button 
             size="lg" 
@@ -196,7 +252,7 @@ const UploadContent = ({ onProcessComplete }: UploadContentProps) => {
                 Processing...
               </>
             ) : (
-              "Process Content"
+              currentDocument ? "Process New Content" : "Process Content"
             )}
           </Button>
         </div>

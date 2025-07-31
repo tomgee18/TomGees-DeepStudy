@@ -15,6 +15,7 @@ import Quizzes from "./pages/Quizzes";
 import Settings from "./pages/Settings"; // Import the new Settings page
 import Help from "./pages/Help"; // Import the new Help page
 import { ThemeProvider } from "./components/theme-provider";
+import { DocumentProvider } from "./contexts/DocumentContext";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,7 +30,8 @@ const queryClient = new QueryClient({
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-      <TooltipProvider>
+      <DocumentProvider>
+        <TooltipProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter
@@ -53,7 +55,8 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
-      </TooltipProvider>
+        </TooltipProvider>
+      </DocumentProvider>
     </ThemeProvider>
   </QueryClientProvider>
 );
