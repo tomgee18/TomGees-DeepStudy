@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function ModeToggle() {
-  const { setTheme } = useTheme(); // Removed 'theme' as it was unused
+  const { setTheme, theme } = useTheme();
 
   return (
     <DropdownMenu>
@@ -26,19 +26,22 @@ export function ModeToggle() {
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => {
           setTheme("light");
-          console.log("Setting theme to light");
+          console.log("Setting theme to light, current theme:", theme);
+          console.log("HTML class list:", document.documentElement.classList.toString());
         }}>
           Light
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => {
           setTheme("dark");
-          console.log("Setting theme to dark");
+          console.log("Setting theme to dark, current theme:", theme);
+          console.log("HTML class list:", document.documentElement.classList.toString());
         }}>
           Dark
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => {
           setTheme("system");
-          console.log("Setting theme to system");
+          console.log("Setting theme to system, current theme:", theme);
+          console.log("HTML class list:", document.documentElement.classList.toString());
         }}>
           System
         </DropdownMenuItem>
