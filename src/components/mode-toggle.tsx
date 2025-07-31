@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function ModeToggle() {
-  const { setTheme } = useTheme();
+  const { setTheme } = useTheme(); // Removed 'theme' as it was unused
 
   return (
     <DropdownMenu>
@@ -24,13 +24,22 @@ export function ModeToggle() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setTheme("light")}>
+        <DropdownMenuItem onClick={() => {
+          setTheme("light");
+          console.log("Setting theme to light");
+        }}>
           Light
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("dark")}>
+        <DropdownMenuItem onClick={() => {
+          setTheme("dark");
+          console.log("Setting theme to dark");
+        }}>
           Dark
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("system")}>
+        <DropdownMenuItem onClick={() => {
+          setTheme("system");
+          console.log("Setting theme to system");
+        }}>
           System
         </DropdownMenuItem>
       </DropdownMenuContent>
