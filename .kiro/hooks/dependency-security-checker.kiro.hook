@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "name": "Dependency Security Checker",
+  "description": "Monitors package.json and lock files for changes and automatically checks for security vulnerabilities, outdated dependencies, and suggests updates. Helps maintain a secure and up-to-date codebase.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "package.json",
+      "pnpm-lock.yaml",
+      "yarn.lock",
+      "package-lock.json"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Analyze the dependency changes in the package files and provide a security and maintenance report:\n\n1. **Security Vulnerabilities**: Check if any new or updated dependencies have known security issues\n2. **Outdated Dependencies**: Identify dependencies that are significantly behind their latest versions\n3. **Breaking Changes**: Warn about potential breaking changes in major version updates\n4. **Bundle Size Impact**: Assess if new dependencies significantly increase bundle size\n5. **Dependency Conflicts**: Check for potential version conflicts between dependencies\n6. **License Compatibility**: Verify that new dependencies have compatible licenses\n\nFor each finding:\n- Explain the potential risk or impact\n- Provide specific version recommendations\n- Suggest migration steps for major updates\n- Prioritize issues by severity (Critical/High/Medium/Low)\n\nConsider the project uses pnpm as the package manager and includes React, TypeScript, Vite, and Supabase dependencies."
+  }
+}
