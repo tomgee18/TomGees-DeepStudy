@@ -1,0 +1,7 @@
+{
+  "name": "perf-cache-middleware-sample",
+  "version": "0.1.0",
+  "description": "Sample middleware to add Cache-Control and ETag headers",
+  "main": "express-cache-middleware.js",
+  "license": "MIT"
+}

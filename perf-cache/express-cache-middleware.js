@@ -1,0 +1,80 @@
+const crypto = require('crypto');
+
+// Express middleware: sets Cache-Control and ETag, and handles If-None-Match (304)
+// Options: { cacheControl: 'public, max-age=60', vary: 'Accept-Encoding' }
+module.exports = function httpCacheMiddleware(options = {}) {
+  const cacheControl = options.cacheControl || 'public, max-age=60';
+  const vary = options.vary || 'Accept-Encoding';
+
+  return function (req, res, next) {
+    // Only for GET/HEAD
+    if (!(req.method === 'GET' || req.method === 'HEAD')) return next();
+
+    // Short-circuit for explicit no-cache request
+    const reqCacheControl = req.headers['cache-control'] || '';
+    if (reqCacheControl.includes('no-cache') || reqCacheControl.includes('no-store')) return next();
+
+    // Capture body chunks
+    let chunks = [];
+    const origWrite = res.write;
+    const origEnd = res.end;
+
+    let bodySize = 0;
+    let finished = false;
+
+    res.write = function (chunk, ...args) {
+      try {
+        if (chunk) {
+          const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+          chunks.push(buf);
+          bodySize += buf.length;
+        }
+      } catch (e) {
+        // ignore
+      }
+      return origWrite.apply(res, [chunk, ...args]);
+    };
+
+    res.end = function (chunk, ...args) {
+      if (finished) return;
+      finished = true;
+      try {
+        if (chunk) {
+          const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+          chunks.push(buf);
+          bodySize += buf.length;
+        }
+
+        // Only set caching for successful responses with a body
+        const statusCode = res.statusCode || 200;
+        if (statusCode >= 200 && statusCode < 300) {
+          const body = Buffer.concat(chunks, bodySize);
+          // compute a lightweight strong-ish ETag
+          const hash = crypto.createHash('sha1').update(body).digest('hex');
+          const etag = `W/\"${hash}\"`;
+
+          // Set headers if not already set
+          if (!res.getHeader('Cache-Control')) res.setHeader('Cache-Control', cacheControl);
+          if (!res.getHeader('ETag')) res.setHeader('ETag', etag);
+          if (!res.getHeader('Vary') && vary) res.setHeader('Vary', vary);
+
+          const inm = req.headers['if-none-match'];
+          if (inm && inm.split(',').map(s => s.trim()).includes(etag)) {
+            // Client already has current content
+            res.statusCode = 304;
+            // Remove body-related headers
+            res.removeHeader('Content-Type');
+            res.removeHeader('Content-Length');
+            return origEnd.apply(res, ['', ...args]);
+          }
+        }
+      } catch (e) {
+        // If ETag fails, just proceed
+      }
+      return origEnd.apply(res, [chunk, ...args]);
+    };
+
+    // proceed
+    next();
+  };
+};
