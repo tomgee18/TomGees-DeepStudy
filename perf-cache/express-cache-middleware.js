@@ -14,6 +14,11 @@ module.exports = function httpCacheMiddleware(options = {}) {
     const reqCacheControl = req.headers['cache-control'] || '';
     if (reqCacheControl.includes('no-cache') || reqCacheControl.includes('no-store')) return next();
 
+    // Set cache headers early to avoid always buffering the response
+    const MAX_ETAG_SIZE = options.maxEtagSize || 64 * 1024; // 64KB
+    if (!res.getHeader('Cache-Control')) res.setHeader('Cache-Control', cacheControl);
+    if (!res.getHeader('Vary') && vary) res.setHeader('Vary', vary);
+
     // Capture body chunks
     let chunks = [];
     const origWrite = res.write;
