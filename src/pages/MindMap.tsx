@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,24 @@ interface MindMapNode {
   level: number;
   children?: MindMapNode[];
 }
+
+const MindMapNodeComponent = React.memo(({ node, depth }: { node: MindMapNode; depth: number }) => {
+  const colors = ['bg-blue-100 border-blue-300', 'bg-green-100 border-green-300', 'bg-yellow-100 border-yellow-300', 'bg-purple-100 border-purple-300'];
+  const colorClass = colors[depth % colors.length];
+  
+  return (
+    <div className={`p-3 rounded-lg border-2 ${colorClass} mb-2`}>
+      <div className="font-semibold text-sm">{node.label}</div>
+      {node.children && node.children.length > 0 && (
+        <div className="ml-4 mt-2 space-y-1">
+          {node.children.map(child => (
+            <MindMapNodeComponent key={child.id} node={child} depth={depth + 1} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+});
 
 const MindMap = () => {
   const { currentDocument, getDocumentContent, isDocumentLoaded } = useDocument();
@@ -54,22 +72,6 @@ const MindMap = () => {
       setIsLoading(false);
       dismissToast(loadingToastId);
     }
-  };
-
-  const renderMindMapNode = (node: MindMapNode, depth: number = 0): JSX.Element => {
-    const colors = ['bg-blue-100 border-blue-300', 'bg-green-100 border-green-300', 'bg-yellow-100 border-yellow-300', 'bg-purple-100 border-purple-300'];
-    const colorClass = colors[depth % colors.length];
-    
-    return (
-      <div key={node.id} className={`p-3 rounded-lg border-2 ${colorClass} mb-2`}>
-        <div className="font-semibold text-sm">{node.label}</div>
-        {node.children && node.children.length > 0 && (
-          <div className="ml-4 mt-2 space-y-1">
-            {node.children.map(child => renderMindMapNode(child, depth + 1))}
-          </div>
-        )}
-      </div>
-    );
   };
 
   // Show mind map generator if no mind map or showGenerator is true
@@ -167,7 +169,7 @@ const MindMap = () => {
           </CardHeader>
           <CardContent>
             <div className="overflow-auto max-h-[600px]">
-              {renderMindMapNode(mindMap)}
+              <MindMapNodeComponent node={mindMap} depth={0} />
             </div>
           </CardContent>
         </Card>
