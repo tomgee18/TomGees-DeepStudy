@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useMemo, ReactNode } from 'react';
 
 export interface DocumentChunk {
   id: string;
@@ -43,13 +43,13 @@ export const DocumentProvider: React.FC<DocumentProviderProps> = ({ children }) 
 
   const isDocumentLoaded = currentDocument !== null;
 
-  const getDocumentContent = (): string => {
+  const getDocumentContent = useMemo(() => {
     if (!currentDocument) return '';
     return currentDocument.chunks
       .sort((a, b) => a.chunk_index - b.chunk_index)
       .map(chunk => chunk.content)
       .join('\n\n');
-  };
+  }, [currentDocument]);
 
   const clearDocument = () => {
     setCurrentDocument(null);
