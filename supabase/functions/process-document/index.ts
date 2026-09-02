@@ -6,6 +6,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const MAX_FILE_COUNT = 10;
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+const MAX_TOTAL_SIZE_BYTES = 25 * 1024 * 1024;
+const MAX_TEXT_LENGTH = 100_000;
+const ALLOWED_FILE_TYPES = new Set([
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain',
+  'text/markdown',
+  'application/rtf',
+]);
+
 // Optimized file processing and chunking
 class DocumentProcessor {
   private static readonly MAX_CHUNK_SIZE = 2000;
@@ -88,6 +100,13 @@ serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed.' }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 405,
+    });
+  }
+
   try {
     // Handle both FormData and JSON requests
     let files: any[] = [];
@@ -103,15 +122,49 @@ serve(async (req: Request) => {
       // Extract text content
       const textContent = formData.get('text');
       if (textContent && typeof textContent === 'string') {
+        if (textContent.length > MAX_TEXT_LENGTH) {
+          return new Response(JSON.stringify({ error: 'Text input exceeds the maximum allowed size.' }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400,
+          });
+        }
         text = textContent;
         totalSize += text.length;
       }
       
       // Extract files
       const fileEntries = Array.from(formData.entries()).filter(([key]) => key.startsWith('file_'));
+      if (fileEntries.length > MAX_FILE_COUNT) {
+        return new Response(JSON.stringify({ error: `Too many files. Maximum allowed is ${MAX_FILE_COUNT}.` }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        });
+      }
       
       for (const [, fileValue] of fileEntries) {
         if (fileValue instanceof File) {
+          if (fileValue.size > MAX_FILE_SIZE_BYTES) {
+            return new Response(JSON.stringify({ error: `File ${fileValue.name} exceeds the maximum size of 10MB.` }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 400,
+            });
+          }
+
+          if (!ALLOWED_FILE_TYPES.has(fileValue.type)) {
+            return new Response(JSON.stringify({ error: `Unsupported file type for ${fileValue.name}.` }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 400,
+            });
+          }
+
+          totalSize += fileValue.size;
+          if (totalSize > MAX_TOTAL_SIZE_BYTES) {
+            return new Response(JSON.stringify({ error: 'Combined upload size exceeds the maximum allowed limit.' }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 400,
+            });
+          }
+
           const fileContent = await fileValue.text(); // Read actual file content
           files.push({
             name: fileValue.name,
@@ -119,7 +172,6 @@ serve(async (req: Request) => {
             type: fileValue.type,
             content: fileContent,
           });
-          totalSize += fileValue.size;
         }
       }
     } else {
@@ -127,7 +179,25 @@ serve(async (req: Request) => {
       const body = await req.json();
       files = body.files || [];
       text = body.text || '';
+      if (typeof text === 'string' && text.length > MAX_TEXT_LENGTH) {
+        return new Response(JSON.stringify({ error: 'Text input exceeds the maximum allowed size.' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        });
+      }
+      if (Array.isArray(files) && files.length > MAX_FILE_COUNT) {
+        return new Response(JSON.stringify({ error: `Too many files. Maximum allowed is ${MAX_FILE_COUNT}.` }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        });
+      }
       totalSize = text.length + files.reduce((sum: number, f: any) => sum + (f.size || 0), 0);
+      if (totalSize > MAX_TOTAL_SIZE_BYTES) {
+        return new Response(JSON.stringify({ error: 'Combined upload size exceeds the maximum allowed limit.' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        });
+      }
     }
 
     if ((!files || files.length === 0) && (!text || text.trim() === '')) {
@@ -139,8 +209,8 @@ serve(async (req: Request) => {
 
     // Initialize Supabase client for database operations
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
     let processedContent = '';
     let allChunks: string[] = [];
@@ -217,12 +287,8 @@ serve(async (req: Request) => {
       status: 200,
     });
   } catch (error: unknown) {
-    let errorMessage = "An unknown error occurred.";
-    if (error instanceof Error) {
-      errorMessage = error.message;
-    }
-    console.error("Error in process-document edge function:", errorMessage);
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    console.error("Error in process-document edge function:", error);
+    return new Response(JSON.stringify({ error: 'Request failed.' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     });

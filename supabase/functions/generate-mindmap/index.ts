@@ -1,5 +1,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { AIService } from '../_shared/ai-service.ts';
+import {
+  ensureStringWithinLimit,
+  ensureValidModel,
+  MAX_TEXT_LENGTH,
+  parseJsonBody,
+} from '../_shared/request-guards.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,15 +17,17 @@ serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    const { text, model = 'gemini-1.5-flash' } = await req.json();
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed.' }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 405,
+    });
+  }
 
-    if (!text) {
-      return new Response(JSON.stringify({ error: 'Text is required for mind map generation.' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      });
-    }
+  try {
+    const body = await parseJsonBody(req);
+    const text = ensureStringWithinLimit(body.text, 'text', MAX_TEXT_LENGTH);
+    const model = ensureValidModel(body.model, 'gemini-1.5-flash');
 
     const aiService = new AIService();
     const prompt = `Create a hierarchical mind map structure from the following text. Return ONLY a valid JSON object with a central topic and branches. Each node should have "id", "label", "children" (array), and "level" (0 for root, 1 for main branches, etc.).
@@ -55,12 +63,21 @@ Format: {"id": "root", "label": "Main Topic", "level": 0, "children": [{"id": "b
       });
     }
   } catch (error: unknown) {
-    let errorMessage = "An unknown error occurred.";
     if (error instanceof Error) {
-      errorMessage = error.message;
+      if (
+        error.message === 'INVALID_JSON_BODY' ||
+        error.message === 'TEXT_REQUIRED' ||
+        error.message === 'TEXT_TOO_LARGE' ||
+        error.message === 'INVALID_MODEL'
+      ) {
+        return new Response(JSON.stringify({ error: 'Invalid request payload.' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        });
+      }
     }
-    console.error("Error in generate-mindmap edge function:", errorMessage);
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    console.error("Error in generate-mindmap edge function:", error);
+    return new Response(JSON.stringify({ error: 'Request failed.' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     });

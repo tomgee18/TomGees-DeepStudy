@@ -1,5 +1,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { AIService } from '../_shared/ai-service.ts';
+import {
+  ensureStringWithinLimit,
+  ensureValidModel,
+  MAX_MESSAGE_LENGTH,
+  parseJsonBody,
+} from '../_shared/request-guards.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,15 +17,17 @@ serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    const { message, model = 'gemini-1.5-flash' } = await req.json();
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed.' }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 405,
+    });
+  }
 
-    if (!message) {
-      return new Response(JSON.stringify({ error: 'Message is required.' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      });
-    }
+  try {
+    const body = await parseJsonBody(req);
+    const message = ensureStringWithinLimit(body.message, 'message', MAX_MESSAGE_LENGTH);
+    const model = ensureValidModel(body.model, 'gemini-1.5-flash');
 
     const aiService = new AIService();
     const prompt = `You are an AI study assistant. Respond to the following message: "${message}"`;
@@ -39,12 +47,21 @@ serve(async (req: Request) => {
       status: 200,
     });
   } catch (error: unknown) {
-    let errorMessage = "An unknown error occurred.";
     if (error instanceof Error) {
-      errorMessage = error.message;
+      if (
+        error.message === 'INVALID_JSON_BODY' ||
+        error.message === 'MESSAGE_REQUIRED' ||
+        error.message === 'MESSAGE_TOO_LARGE' ||
+        error.message === 'INVALID_MODEL'
+      ) {
+        return new Response(JSON.stringify({ error: 'Invalid request payload.' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        });
+      }
     }
-    console.error("Error in chat-response edge function:", errorMessage);
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    console.error("Error in chat-response edge function:", error);
+    return new Response(JSON.stringify({ error: 'Request failed.' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     });
