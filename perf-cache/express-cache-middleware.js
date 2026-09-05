@@ -19,19 +19,34 @@ module.exports = function httpCacheMiddleware(options = {}) {
     if (!res.getHeader('Cache-Control')) res.setHeader('Cache-Control', cacheControl);
     if (!res.getHeader('Vary') && vary) res.setHeader('Vary', vary);
 
-    // Capture body chunks
-    let chunks = [];
+    // Capture body chunks (but avoid buffering large responses)
     const origWrite = res.write;
     const origEnd = res.end;
 
     let bodySize = 0;
     let finished = false;
+    const hash = crypto.createHash('sha1');
+    let buffering = true; // whether we are still buffering to compute an ETag
+    let bufferedChunks = [];
 
     res.write = function (chunk, ...args) {
       try {
         if (chunk) {
           const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-          chunks.push(buf);
+          // update streaming hash always (cheap)
+          try { hash.update(buf); } catch (e) { /* ignore */ }
+
+          // buffer only while under threshold to avoid high memory usage
+          if (buffering) {
+            if (bodySize + buf.length <= MAX_ETAG_SIZE) {
+              bufferedChunks.push(buf);
+            } else {
+              // stop buffering and free already-buffered memory
+              buffering = false;
+              bufferedChunks = null;
+            }
+          }
+
           bodySize += buf.length;
         }
       } catch (e) {
@@ -46,31 +61,46 @@ module.exports = function httpCacheMiddleware(options = {}) {
       try {
         if (chunk) {
           const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-          chunks.push(buf);
+          try { hash.update(buf); } catch (e) { /* ignore */ }
+
+          if (buffering) {
+            if (bodySize + buf.length <= MAX_ETAG_SIZE) {
+              bufferedChunks.push(buf);
+            } else {
+              buffering = false;
+              bufferedChunks = null;
+            }
+          }
+
           bodySize += buf.length;
         }
 
         // Only set caching for successful responses with a body
         const statusCode = res.statusCode || 200;
         if (statusCode >= 200 && statusCode < 300) {
-          const body = Buffer.concat(chunks, bodySize);
-          // compute a lightweight strong-ish ETag
-          const hash = crypto.createHash('sha1').update(body).digest('hex');
-          const etag = `W/\"${hash}\"`;
+          if (buffering && bufferedChunks && bufferedChunks.length > 0) {
+            // compute ETag from streamed hash (we buffered the full body)
+            const hashHex = hash.digest('hex');
+            const etag = `W/"${hashHex}"`;
 
-          // Set headers if not already set
-          if (!res.getHeader('Cache-Control')) res.setHeader('Cache-Control', cacheControl);
-          if (!res.getHeader('ETag')) res.setHeader('ETag', etag);
-          if (!res.getHeader('Vary') && vary) res.setHeader('Vary', vary);
+            // Set headers if not already set
+            if (!res.getHeader('Cache-Control')) res.setHeader('Cache-Control', cacheControl);
+            if (!res.getHeader('ETag')) res.setHeader('ETag', etag);
+            if (!res.getHeader('Vary') && vary) res.setHeader('Vary', vary);
 
-          const inm = req.headers['if-none-match'];
-          if (inm && inm.split(',').map(s => s.trim()).includes(etag)) {
-            // Client already has current content
-            res.statusCode = 304;
-            // Remove body-related headers
-            res.removeHeader('Content-Type');
-            res.removeHeader('Content-Length');
-            return origEnd.apply(res, ['', ...args]);
+            const inm = req.headers['if-none-match'];
+            if (inm && inm.split(',').map(s => s.trim()).includes(etag)) {
+              // Client already has current content
+              res.statusCode = 304;
+              // Remove body-related headers
+              res.removeHeader('Content-Type');
+              res.removeHeader('Content-Length');
+              return origEnd.apply(res, ['', ...args]);
+            }
+          } else {
+            // Not buffering (response too large) — skip setting ETag to avoid buffering and heavy work
+            if (!res.getHeader('Cache-Control')) res.setHeader('Cache-Control', cacheControl);
+            if (!res.getHeader('Vary') && vary) res.setHeader('Vary', vary);
           }
         }
       } catch (e) {
